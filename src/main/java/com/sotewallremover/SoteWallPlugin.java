@@ -1,4 +1,4 @@
-package com.example;
+package com.sotewallremover;
 
 import javax.inject.Inject;
 
@@ -94,9 +94,6 @@ public class SoteWallPlugin extends Plugin
 		
 		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
 		
-		if (regionId != 13123) {
-			return false;
-		}
-		return true;
+		return regionId == 13123;
 	}
 }
