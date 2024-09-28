@@ -1,2 +1,1 @@
-# Example
-An example greeter plugin
+Plugin to remove the wall behind Sotetseg, improving visibility for players standing at the NW and NE spots.
