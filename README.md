@@ -1,1 +1,1 @@
-Plugin to remove the wall behind Sotetseg, improving visibility for players standing at the NW and NE spots.
+Plugin to remove the wall behind Sotetseg and walls surrounding the Nex arena, improving visibility for players.
