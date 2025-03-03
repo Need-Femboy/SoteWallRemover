@@ -59,6 +59,10 @@ public class SoteWallPlugin extends Plugin
 		
 		if (boss != null)
 		{
+			if (boss.instanceOnly && !client.getTopLevelWorldView().isInstance())
+			{
+				return;
+			}
 			removeWall(boss);
 		}
 	}
