@@ -5,6 +5,7 @@ import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
@@ -21,10 +22,10 @@ public class SoteWallPlugin extends Plugin
 {
 	@Inject
 	private Client client;
-	
+
 	@Inject
 	private ClientThread clientThread;
-	
+
 	@Override
 	protected void startUp() throws Exception
 	{
@@ -34,13 +35,19 @@ public class SoteWallPlugin extends Plugin
 			clientThread.invoke(this::regionAndWallCheck);
 		}
 	}
-	
+
 	@Override
 	protected void shutDown() throws Exception
 	{
-	
+		clientThread.invoke(() ->
+		{
+			if (client.getGameState() == GameState.LOGGED_IN)
+			{
+				client.setGameState(GameState.LOADING);
+			}
+		});
 	}
-	
+
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged)
 	{
@@ -48,15 +55,35 @@ public class SoteWallPlugin extends Plugin
 		{
 			return;
 		}
-		
 		regionAndWallCheck();
 	}
-	
+
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		regionAndSpawnedWallCheck(event.getGameObject());
+	}
+
+	private void regionAndSpawnedWallCheck(GameObject gameObject)
+	{
+		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+		Bosses boss = Bosses.inRegion(regionId);
+		if (boss == null)
+		{
+			return;
+		}
+		if (gameObject == null)
+		{
+			return;
+		}
+		removeSpawnedWall(boss, gameObject);
+	}
+
 	private void regionAndWallCheck()
 	{
 		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
 		Bosses boss = Bosses.inRegion(regionId);
-		
+
 		if (boss != null)
 		{
 			if (boss.instanceOnly && !client.getTopLevelWorldView().isInstance())
@@ -66,12 +93,21 @@ public class SoteWallPlugin extends Plugin
 			removeWall(boss);
 		}
 	}
-	
+
+	private void removeSpawnedWall(Bosses boss, GameObject gameObject)
+	{
+		Scene scene = client.getTopLevelWorldView().getScene();
+		if (gameObject != null && boss.gameObj.contains(gameObject.getId()))
+		{
+			scene.removeGameObject(gameObject);
+		}
+	}
+
 	private void removeWall(Bosses boss)
 	{
 		Scene scene = client.getTopLevelWorldView().getScene();
 		Tile[][][] tiles = scene.getTiles();
-		for (int z = 0; z < boss.maxZ; ++z)
+		for (int z = boss.minZ; z < boss.maxZ; ++z)
 		{
 			for (int x = 0; x < Constants.SCENE_SIZE; ++x)
 			{
