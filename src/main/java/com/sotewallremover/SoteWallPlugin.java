@@ -1,5 +1,6 @@
 package com.sotewallremover;
 
+import com.google.inject.Provides;
 import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +9,9 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -22,6 +25,9 @@ public class SoteWallPlugin extends Plugin
 {
 	@Inject
 	private Client client;
+	
+	@Inject
+	private SoteWallConfig config;
 
 	@Inject
 	private ClientThread clientThread;
@@ -29,11 +35,13 @@ public class SoteWallPlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
-		//In-case someone starts the plugin whilst already in the room I guess?
-		if (client.getGameState() == GameState.LOGGED_IN)
+		clientThread.invoke(() ->
 		{
-			clientThread.invoke(this::regionAndWallCheck);
-		}
+			if (client.getGameState() == GameState.LOGGED_IN)
+			{
+				regionAndWallCheck();
+			}
+		});
 	}
 
 	@Override
@@ -63,11 +71,33 @@ public class SoteWallPlugin extends Plugin
 	{
 		regionAndSpawnedWallCheck(event.getGameObject());
 	}
+	
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (event.getGroup().equals(SoteWallConfig.configName))
+		{
+			if (event.getNewValue().equals("false"))
+			{
+				clientThread.invoke(() ->
+				{
+					if (client.getGameState() == GameState.LOGGED_IN)
+					{
+						client.setGameState(GameState.LOADING);
+					}
+				});
+			}
+			else if (event.getNewValue().equals("true"))
+			{
+				regionAndWallCheck();
+			}
+		}
+	}
 
 	private void regionAndSpawnedWallCheck(GameObject gameObject)
 	{
 		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-		Bosses boss = Bosses.inRegion(regionId);
+		Bosses boss = Bosses.inRegion(regionId, config);
 		if (boss == null)
 		{
 			return;
@@ -82,7 +112,7 @@ public class SoteWallPlugin extends Plugin
 	private void regionAndWallCheck()
 	{
 		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-		Bosses boss = Bosses.inRegion(regionId);
+		Bosses boss = Bosses.inRegion(regionId, config);
 
 		if (boss != null)
 		{
@@ -148,5 +178,10 @@ public class SoteWallPlugin extends Plugin
 				}
 			}
 		}
+	}
+	
+	@Provides
+	SoteWallConfig provideConfig(ConfigManager configManager) {
+		return configManager.getConfig(SoteWallConfig.class);
 	}
 }

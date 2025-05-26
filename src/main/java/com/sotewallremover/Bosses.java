@@ -18,12 +18,33 @@ public enum Bosses {
 	public final Set<Integer> gameObj;
 	public final Set<Integer> wallObj;
 
-	public static Bosses inRegion(int regionId) {
+	public static Bosses inRegion(int regionId, SoteWallConfig config) {
 		for (Bosses b : Bosses.values())
 		{
-			if (b.regions.contains(regionId))
+			if (!bossConfigChecker(b, config))
+			{
+				continue;
+			}
+			
+			if (b.regions.contains(regionId)) {
 				return b;
+			}
 		}
 		return null;
+	}
+	
+	public static boolean bossConfigChecker(Bosses boss, SoteWallConfig config)
+	{
+		switch (boss)
+		{
+			case NEX:
+				return config.HideNex();
+			case SOTE:
+				return config.HideSote();
+			case GAUNTLET:
+			case CORRUPTED_GAUNTLET:
+				return config.HideGauntlet();
+		}
+		return false;
 	}
 }
