@@ -77,6 +77,14 @@ public class SoteWallPlugin extends Plugin
 	{
 		if (event.getGroup().equals(SoteWallConfig.configName))
 		{
+			int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+			Bosses boss = Bosses.inRegion(regionId);
+			
+			if (boss == null)
+			{
+				return;
+			}
+			
 			if (event.getNewValue().equals("false"))
 			{
 				clientThread.invoke(() ->
