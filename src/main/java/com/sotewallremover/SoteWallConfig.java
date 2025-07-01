@@ -28,7 +28,7 @@ public interface SoteWallConfig extends Config
 	)
 	default boolean HideNex()
 	{
-		return false;
+		return true;
 	}
 	@ConfigItem(
 			keyName = "hideGauntlet",
