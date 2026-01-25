@@ -40,5 +40,14 @@ public interface SoteWallConfig extends Config
 	{
 		return false;
 	}
-	
+	@ConfigItem(
+			keyName = "hideVetion",
+			name = "Hide Walls At Vet'ion",
+			description = "",
+			position = 3
+	)
+	default boolean HideVetion()
+	{
+		return false;
+	}
 }
