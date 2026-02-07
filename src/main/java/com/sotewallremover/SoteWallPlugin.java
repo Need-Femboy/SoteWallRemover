@@ -7,20 +7,15 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameObjectSpawned;
-import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.WallObjectSpawned;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.callback.Hooks;
 import net.runelite.client.callback.RenderCallbackManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
 @Slf4j
 @PluginDescriptor(
@@ -74,15 +69,33 @@ public class SoteWallPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onGameObjectSpawned(GameObjectSpawned event)
+	public void onGameTick(GameTick event)
 	{
-		removeObj(event.getGameObject(), null);
-	}
+		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+		Bosses boss = Bosses.inRegion(regionId, config);
 
-	@Subscribe
-	public void onWallObjectSpawned(WallObjectSpawned event)
-	{
-		removeObj(null, event.getWallObject());
+		if (boss == null)
+		{
+			callback.boss = boss;
+			callback.gameObjectReference.clear();
+			callback.wallObjectReference.clear();
+			return;
+		}
+
+		if (callback.boss == boss) //Boss hasn't changed so ignore
+		{
+			return;
+		}
+
+		callback.boss = boss;
+		callback.gameObjectReference.clear();
+		callback.wallObjectReference.clear();
+		if (boss.gameObj != null)
+			callback.gameObjectReference.addAll(boss.gameObj);
+		if (boss.wallObj != null)
+			callback.wallObjectReference.addAll(boss.wallObj);
+
+		client.setGameState(GameState.LOADING); //This is necessary to properly hide scenery, the callback doesn't seem to run until I do this for some reason
 	}
 
 	@Subscribe
@@ -106,30 +119,6 @@ public class SoteWallPlugin extends Plugin
 					client.setGameState(GameState.LOADING);
 				}
 			});
-		}
-	}
-
-	private void removeObj(GameObject gameObject, WallObject wallObject)
-	{
-		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-		Bosses boss = Bosses.inRegion(regionId, config);
-
-		callback.boss = boss;
-
-		if (boss == null || (boss.instanceOnly && !client.getTopLevelWorldView().isInstance()))
-		{
-			callback.gameObjectReference.clear();
-			callback.wallObjectReference.clear();
-			return;
-		}
-
-		if (gameObject != null && boss.gameObj != null && boss.gameObj.contains(gameObject.getId()))
-		{
-			callback.gameObjectReference.add(gameObject.getId());
-		}
-        else if (wallObject != null && boss.wallObj != null && boss.wallObj.contains(wallObject.getId()))
-        {
-			callback.wallObjectReference.add(wallObject.getId());
 		}
 	}
 
