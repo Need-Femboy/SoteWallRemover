@@ -83,8 +83,10 @@ public class SoteWallPlugin extends Plugin
 		{
 			return;
 		}
+
 		callback.boss = boss;
 		CleanUp(false);
+
 		if (boss.gameObj != null)
 			callback.gameObjectReference.addAll(boss.gameObj);
 		if (boss.wallObj != null)

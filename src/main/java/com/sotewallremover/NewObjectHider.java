@@ -31,7 +31,7 @@ public class NewObjectHider implements RenderCallback {
                 scene.removeTile(tile);
             return !isMarkedForDeletion;
         }
-        return true;
+        return RenderCallback.super.drawTile(scene, tile);
     }
 
     @Override
@@ -41,6 +41,6 @@ public class NewObjectHider implements RenderCallback {
         {
             return !gameObjectReference.contains(object.getId());
         }
-        return true;
+        return RenderCallback.super.drawObject(scene, object);
     }
 }
