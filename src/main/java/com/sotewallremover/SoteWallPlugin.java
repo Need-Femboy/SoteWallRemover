@@ -64,6 +64,7 @@ public class SoteWallPlugin extends Plugin
 				client.setGameState(GameState.LOADING);
 			}
 		});
+		callback.boss = null;
 		callback.gameObjectReference.clear();
 		callback.wallObjectReference.clear();
 	}
