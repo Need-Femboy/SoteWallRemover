@@ -8,12 +8,19 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.WallObjectSpawned;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.callback.Hooks;
+import net.runelite.client.callback.RenderCallbackManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @PluginDescriptor(
@@ -25,28 +32,23 @@ public class SoteWallPlugin extends Plugin
 {
 	@Inject
 	private Client client;
-	
+
 	@Inject
 	private SoteWallConfig config;
 
 	@Inject
 	private ClientThread clientThread;
 
+    @Inject
+    private NewObjectHider callback;
+
+    @Inject
+    private RenderCallbackManager renderCallbackManager;
+
 	@Override
 	protected void startUp() throws Exception
 	{
-		clientThread.invoke(() ->
-		{
-			if (client.getGameState() == GameState.LOGGED_IN)
-			{
-				regionAndWallCheck();
-			}
-		});
-	}
-
-	@Override
-	protected void shutDown() throws Exception
-	{
+        renderCallbackManager.register(callback);
 		clientThread.invoke(() ->
 		{
 			if (client.getGameState() == GameState.LOGGED_IN)
@@ -56,22 +58,33 @@ public class SoteWallPlugin extends Plugin
 		});
 	}
 
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged)
+	@Override
+	protected void shutDown() throws Exception
 	{
-		if (gameStateChanged.getGameState() != GameState.LOGGED_IN)
+        renderCallbackManager.unregister(callback);
+		clientThread.invoke(() ->
 		{
-			return;
-		}
-		regionAndWallCheck();
+			if (client.getGameState() == GameState.LOGGED_IN)
+			{
+				client.setGameState(GameState.LOADING);
+			}
+		});
+		callback.gameObjectReference.clear();
+		callback.wallObjectReference.clear();
 	}
 
 	@Subscribe
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
-		regionAndSpawnedWallCheck(event.getGameObject());
+		removeObj(event.getGameObject(), null);
 	}
-	
+
+	@Subscribe
+	public void onWallObjectSpawned(WallObjectSpawned event)
+	{
+		removeObj(null, event.getWallObject());
+	}
+
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
@@ -79,115 +92,47 @@ public class SoteWallPlugin extends Plugin
 		{
 			int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
 			Bosses boss = Bosses.inRegion(regionId);
-			
+
 			if (boss == null)
 			{
 				return;
 			}
-			
-			if (event.getNewValue().equals("false"))
+
+			//Just forces a map load to hide stuff
+			clientThread.invoke(() ->
 			{
-				clientThread.invoke(() ->
+				if (client.getGameState() == GameState.LOGGED_IN)
 				{
-					if (client.getGameState() == GameState.LOGGED_IN)
-					{
-						client.setGameState(GameState.LOADING);
-					}
-				});
-			}
-			else if (event.getNewValue().equals("true"))
-			{
-				regionAndWallCheck();
-			}
-		}
-	}
-
-	private void regionAndSpawnedWallCheck(GameObject gameObject)
-	{
-		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-		Bosses boss = Bosses.inRegion(regionId, config);
-		if (boss == null)
-		{
-			return;
-		}
-		if (gameObject == null)
-		{
-			return;
-		}
-		removeSpawnedWall(boss, gameObject);
-	}
-
-	private void regionAndWallCheck()
-	{
-		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-		Bosses boss = Bosses.inRegion(regionId, config);
-
-		if (boss != null)
-		{
-			if (boss.instanceOnly && !client.getTopLevelWorldView().isInstance())
-			{
-				return;
-			}
-			removeWall(boss);
-		}
-	}
-
-	private void removeSpawnedWall(Bosses boss, GameObject gameObject)
-	{
-		Scene scene = client.getTopLevelWorldView().getScene();
-		if (gameObject != null && boss.gameObj.contains(gameObject.getId()))
-		{
-			scene.removeGameObject(gameObject);
-		}
-	}
-
-	private void removeWall(Bosses boss)
-	{
-		Scene scene = client.getTopLevelWorldView().getScene();
-		Tile[][][] tiles = scene.getTiles();
-		for (int z = boss.minZ; z < boss.maxZ; ++z)
-		{
-			for (int x = 0; x < Constants.SCENE_SIZE; ++x)
-			{
-				for (int y = 0; y < Constants.SCENE_SIZE; ++y)
-				{
-					Tile tile = tiles[z][x][y];
-					
-					if (tile == null)
-					{
-						continue;
-					}
-					
-					if (boss.gameObj != null)
-					{
-						GameObject[] gameObjects = tile.getGameObjects();
-						if (gameObjects != null)
-						{
-							for (GameObject gameObject : gameObjects)
-							{
-								if (gameObject != null && boss.gameObj.contains(gameObject.getId()))
-								{
-									scene.removeGameObject(gameObject);
-									break;
-								}
-							}
-						}
-					}
-					
-					
-					if (boss.wallObj != null)
-					{
-						WallObject wo = tile.getWallObject();
-						if (wo != null && boss.wallObj.contains(wo.getId()))
-						{
-							scene.removeTile(tile);
-						}
-					}
+					client.setGameState(GameState.LOADING);
 				}
-			}
+			});
 		}
 	}
-	
+
+	private void removeObj(GameObject gameObject, WallObject wallObject)
+	{
+		int regionId = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
+		Bosses boss = Bosses.inRegion(regionId, config);
+
+		callback.boss = boss;
+
+		if (boss == null || (boss.instanceOnly && !client.getTopLevelWorldView().isInstance()))
+		{
+			callback.gameObjectReference.clear();
+			callback.wallObjectReference.clear();
+			return;
+		}
+
+		if (gameObject != null && boss.gameObj != null && boss.gameObj.contains(gameObject.getId()))
+		{
+			callback.gameObjectReference.add(gameObject.getId());
+		}
+        else if (wallObject != null && boss.wallObj != null && boss.wallObj.contains(wallObject.getId()))
+        {
+			callback.wallObjectReference.add(wallObject.getId());
+		}
+	}
+
 	@Provides
 	SoteWallConfig provideConfig(ConfigManager configManager) {
 		return configManager.getConfig(SoteWallConfig.class);
