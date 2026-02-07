@@ -1,1 +1,7 @@
-Plugin to remove the wall behind Sotetseg and walls surrounding the Nex arena and Gauntlet rooms, improving visibility for players.
+Plugin to remove walls in various boss arenas improving visibility for players.
+
+Currently affected bosses are:
+Sotetseg
+Nex
+The Gauntlet
+Vet'ion/Calvar'ion
