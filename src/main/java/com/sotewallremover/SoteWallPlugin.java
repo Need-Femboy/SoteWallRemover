@@ -20,7 +20,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 @Slf4j
 @PluginDescriptor(
 		name = "Boss Wall Remover",
-		description = "Removes annoying walls at Sotetseg and Nex",
+		description = "Removes annoying walls at various bosses",
 		tags = {"tob", "theatre of blood", "nex", "bossing"}
 )
 public class SoteWallPlugin extends Plugin
