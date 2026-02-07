@@ -64,9 +64,7 @@ public class SoteWallPlugin extends Plugin
 				client.setGameState(GameState.LOADING);
 			}
 		});
-		callback.boss = null;
-		callback.gameObjectReference.clear();
-		callback.wallObjectReference.clear();
+		CleanUp(true);
 	}
 
 	@Subscribe
@@ -77,9 +75,7 @@ public class SoteWallPlugin extends Plugin
 
 		if (boss == null)
 		{
-			callback.boss = boss;
-			callback.gameObjectReference.clear();
-			callback.wallObjectReference.clear();
+			CleanUp(true);
 			return;
 		}
 
@@ -87,10 +83,8 @@ public class SoteWallPlugin extends Plugin
 		{
 			return;
 		}
-
 		callback.boss = boss;
-		callback.gameObjectReference.clear();
-		callback.wallObjectReference.clear();
+		CleanUp(false);
 		if (boss.gameObj != null)
 			callback.gameObjectReference.addAll(boss.gameObj);
 		if (boss.wallObj != null)
@@ -112,6 +106,7 @@ public class SoteWallPlugin extends Plugin
 				return;
 			}
 
+			CleanUp(true);
 			//Just forces a map load to hide stuff
 			clientThread.invoke(() ->
 			{
@@ -121,6 +116,13 @@ public class SoteWallPlugin extends Plugin
 				}
 			});
 		}
+	}
+
+	private void CleanUp(boolean clearBoss) {
+		if (clearBoss)
+			callback.boss = null;
+		callback.gameObjectReference.clear();
+		callback.wallObjectReference.clear();
 	}
 
 	@Provides
